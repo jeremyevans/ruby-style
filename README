@@ -1,0 +1,292 @@
+= style (Supervised TCPServer, Yielding Listeners Easily)
+
+style is a Ruby program that provides a supervised TCPServer (or TCPServers)
+with multiple listening childing processes.  It allows the child processes to
+be killed and respawned while making sure that there are always child processes
+available to listen to requests.  It automatically respawns dead
+child processes.  It allows for increasing and decreasing the number of child
+processes on the fly.  
+
+style is distributed as a gem, and can be installed with:
+
+    sudo gem install ruby-style
+
+Feedback/Bugs/Support Requests should be handled through RubyForge at
+http://rubyforge.org/projects/ruby-style/.
+
+The RDoc is available at http://code.jeremyevans.net/doc/ruby-style/.
+Subversion access is available at svn://code.jeremyevans.net/ruby-style/.
+
+== Highlights
+
+* Always has child listeners available, so no connections are lost when
+  listeners are restarted
+* Automatically restarts dead child processes
+* Supports both single port and multiple port clustering, with an arbitrary
+  number of listeners per port
+* Supports increasing and decreasing the number of child processes per port on
+  the fly
+* Supports both command line and yaml config file configuration
+* Is easily extensible to support running other frameworks and protocols other
+  than the included ones (RailsMongrel and RailsSCGI)
+
+== Running and configuration
+
+To see the available commands and possible and default configuration options,
+just run the program without any arguments:
+
+style [option value, ...] (decrement|halt|increment|restart|start|stop)
+ Options:
+  -b, --bind          IP address to bind to [127.0.0.1]
+  -c, --config        Location of config file [config/style.yaml]
+  -d, --directory     Working directory [.]
+  -f, --fork          Number of listners on each port [1]
+  -k, --killtime      Number of seconds to wait when killing each child [2]
+  -l, --logfile       Where to redirect STDOUT and STDERR [log/style.log]
+  -n, --number        Number of ports to which to bind [1]
+  -p, --port          Starting port to which to bind [9999]
+  -P, --pidfile       Location of pid file [log/style.pid]
+  -s, --style         Type of style to use [RailsMongrel]
+  -u, --unsupervised  Whether to run unsupervised [No]
+
+Here's what the various commands do:
+
+* decrement (USR2) - Decrease the number of listeners per port by 1
+* halt (TERM) - Immediately shutdown the child processes and exit
+* increment (USR1) - Increase the number of listeners per port by 1
+* restart (HUP) - Replace the current listeners with new listeners
+* start - Starts the supervisor process and the listening processes
+* stop (INT) - Gracefully shutdown the child processes and exit
+
+All commands except start just send the listed signal to the preexisting
+supervisor process specified in the pid file.
+
+Note that the -d (--directory) option changes the working directory of the
+process, so the -c, -l, and -P options are relative to that.
+
+Here's a longer explanation of the options:
+
+  -b, --bind          IP address to bind to [127.0.0.1]
+
+  This is the TCP/IP networking sockets to bind to.  It defaults to the
+  loopback address because generally the web application runs on the same
+  physical server as the web server.  If this is not the case, change it to an
+  externally available IP, and make sure to lock down access to the port via a
+  firewall.
+
+  -c, --config        Location of config file [config/style.yaml]
+
+  This is the configuration file for style.  It is recommended that you use
+  this instead of the command line configuration, as it saves typing.  This
+  path is relative to the working directory, so if it is not inside the working
+  directory, make sure you specify an absolute path.  This option is not
+  configurable from the configuration file.
+
+  -d, --directory     Working directory [.]
+
+  This is the working directory of the process.  It should generally be the
+  path to the root of the application.  Alternatively, you can change to the
+  root of the application before hand and then not use this option. This option
+  is not configurable from the configuration file.
+
+  -f, --fork          Number of listners on each port [1]
+
+  This enables multiple child processes listening on each port.  It is
+  recommended that you use -f instead of -n for multiple listeners, since it
+  simplifies the configuration of the webserver, and can also eliminate
+  the need for a proxy such as pound or pen to handle this for you.  It
+  defaults to one process per port.  Note that when restarting processes, 
+  replacement processes are started before the currently listening processes
+  are killed, so it is possibly to have multiple processes listening on a port
+  even if this is left at one.
+
+  -k, --killtime      Number of seconds to wait when killing each child [2]
+
+  This sets the time that style between sending shutdown signals to child
+  process, as well as the time between starting a replacement process and
+  killing an existing process.  When restarting, the amount of time spent
+  waiting should be between 2-3 * (killtime * number * fork).
+
+  -l, --logfile       Where to redirect STDOUT and STDERR  [log/style.log]
+
+  This is the location of the log file, relative to the working directory.
+  style itself doesn't output anything after it has detached from the listening
+  terminal, but child listening processes might output to STDOUT or STDERR.
+
+  -n, --number        Number of ports to which to bind [1]
+
+  This makes style start up multiple sockets, one per port starting with the
+  given port (so port, port+1, port+2, ..., port+n).  This makes webserver
+  configuration a little more difficult than with just using -f, and might
+  also require a separate proxy such as pound or pen, so you should try just
+  using -f first.
+  
+  -p, --port          Starting port to which to bind [9999]
+
+  This is the starting (or only) port that style will use.  If -n is used, all
+  ports will be greater than this one.
+
+  -P, --pidfile       Location of pid file [log/style.pid]
+
+  This is the pid file, relative to the working directory.  The pid file is
+  necessary, as it is what is used by all commands other than start.  If
+  incorrect information is in the pid file, the processes won't be stopped when
+  they should be, and you will probably won't be able to start new processes
+  (because the ports will still be in use).
+
+  -s, --style         Type of style to use [RailsMongrel]
+
+  This is the type of style to use.  It defaults to RailsMongrel, as that is
+  most common configuration these days.  The other style included with style is
+  RailsSCGI.  Adding other styles is fairly easy, just make the style is in a
+  file named XXXXXStyle.rb (where XXXXX is in the name of the style), and that
+  file is located in ruby's library path ($:, e.g. via the RUBYLIB environment
+  variable).  See the included styles for an example.
+
+  -u, --unsupervised  Whether to run unsupervised [No]
+  
+  This starts child processes without using a supervisor process.  It is not
+  as reliable or as featureful as the regular supervised mode, but those may
+  not be necessary for smaller sites.  In unsupervised mode, only restart,
+  start, and stop are valid commands, child processes aren't automatically
+  restarted when they die, and you may lose connections during restarts.
+
+Every one of the long options can also be specified in the config file.  Also,
+the  config file if you want to specify any settings specific to the style
+being used (such as modifying the Rails environment setting).  
+
+== Included styles and config files
+
+style current comes with support for the following styles: RailsMongrelStyle
+(the default, which requires rails and mongrel), and RailsSCGIStyle (which
+requires rails and ruby-scgi).
+
+The RailsMongrel style supports running Rails on Mongrel, which would usually
+be deployed behind a front end webserver, such as Apache, Lighttpd, or Nginx.
+The RailsSCGI style supports running Rails over SCGI, which is supported by
+both Apache and Lighttpd.  Both default to running Rails in production mode,
+as style is designed as a production tool.
+
+Example RailsMongrel style.yaml that listens on ports 8912 and 8192 on any
+interface, with three listeners per port.  Note how the :style_config entry is
+used to set up settings specific to the RailsMongrel style, such as placing
+Rails in development mode.
+
+---
+:port: 8912
+:bind: ""
+:fork: 3
+:number: 2
+:killtime: 1
+:style: RailsMongrel
+:style_config:
+  :environment: development
+  :log_file: log/rails-mongrel.log
+  :docroot: public
+  :num_processors: 99
+  :timeout: 100
+
+Example RailsSCGI style.yaml that has four listeners on port 8912:
+
+---
+:port: 8912
+:fork: 4
+:number: 1 
+:style: RailsSCGI
+:style_config:
+  :logfile: log/railsscgi.log
+  :maxconns: 10
+  :environment: production
+
+Very simple configuration that runs RailsMongrel style in unsupervised mode on
+port 3000.
+
+---
+:port: 3000
+:unsupervised: 1
+
+== How restarting works
+
+Restarting works by starting a new child process, waiting for killtime, and then
+killing the exisiting process.  It repeats this for all existing child processes.
+
+For example:
+
+# style idling with three listeners
+Thu Sep  6 12:01:47 PDT 2007
+11460 ??  I       0:00.00 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+ 6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+27808 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+# Restart occurs, new process started (1207)
+Thu Sep  6 12:01:49 PDT 2007
+11460 ??  I       0:00.00 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+27808 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 1207 ??  R       0:00.95 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+# Old process killed (27808)
+Thu Sep  6 12:01:51 PDT 2007
+11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+ 6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+# New process started (3204)
+Thu Sep  6 12:01:53 PDT 2007
+11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 3204 ??  R       0:01.01 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+# Old process killed (6540)
+Thu Sep  6 12:01:55 PDT 2007
+11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+# New process started (6766)
+Thu Sep  6 12:01:57 PDT 2007
+11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 6766 ??  R       0:00.99 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+# Old process killed (272)
+Thu Sep  6 12:01:59 PDT 2007
+11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+ 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+ 6766 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+
+Result, three brand new listening processes, total time to restart is about 12
+seconds (2 * (2 killtime * 1 number * 3 fork)).
+
+== Other frameworks and protocols
+
+style can support any ruby server program that supports the following
+interface (which is called a style):
+
+# in file XXXXXStyle.rb, which must be in ruby's path ($:)
+# XXXXX is the name of the style (e.g. RubySCGI)
+  class XXXXXStyle
+    def initialize(options)
+      #options is a Hash
+    end
+    
+    def listen(socket)
+      # socket is a TCPServer
+    end
+  end
+
+Just specify the style with -s or --style on the command line, or :style in the
+config file.
+
+== FAQ
+
+Q: Does this run on Windows?
+
+A: No.  Among other things, style uses fork, which is not available on Windows.
+
+Q: Does it work with Capistrano yet?
+
+A: I haven't tried.  If you have luck, let me know.

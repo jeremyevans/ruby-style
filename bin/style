@@ -1,0 +1,3 @@
+#!/usr/bin/env ruby
+require 'style'
+Style.new.process(ARGV[0])
