@@ -414,7 +414,7 @@ class Style
     -k, --killtime      Number of seconds to wait when killing each child [2]
     -l, --logfile       Where to redirect STDOUT and STDERR [log/style.log]
     -n, --number        Number of ports to which to bind [1]
-    -p, --port          Starting port to bind to [9999]
+    -p, --port          Starting port to which to bind [9999]
     -P, --pidfile       Location of pid file [log/style.pid]
     -s, --style         Type of style to use [RailsMongrel]
     -u, --unsupervised  Whether to run unsupervised [No]
