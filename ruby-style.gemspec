@@ -10,4 +10,5 @@ spec = Gem::Specification.new do |s|
   s.executables = %w'style'
   s.has_rdoc = true
   s.rdoc_options = %w'--inline-source --line-numbers'
+  s.rubyforge_project = 'ruby-style'
 end
