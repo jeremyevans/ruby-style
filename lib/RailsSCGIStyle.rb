@@ -8,7 +8,7 @@ class RailsSCGIStyle < SCGI::Processor
     ENV['RAILS_ENV'] = settings[:environment] || 'production'
     $0 += " environment:#{ENV['RAILS_ENV']}"
     require "config/environment"
-    ActiveRecord::Base.threaded_connections = false
+    ActiveRecord::Base.allow_concurrency = false
     require 'dispatcher'
     super(settings)
     @guard = Mutex.new
