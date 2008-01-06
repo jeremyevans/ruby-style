@@ -12,12 +12,15 @@ module Mongrel
     
     # Keep the interface the same, but ignore the host and port and don't
     # create a socket (one will be provided later)
-    def initialize(host, port, num_processors=2**30-1, timeout=0)
+    def initialize(host, port, num_processors=950, throttle=0, timeout=60)
+      tries = 0
       @classifier = URIClassifier.new
+      @host = host
+      @port = port
       @workers = ThreadGroup.new
-      @timeout = timeout
+      @throttle = throttle
       @num_processors = num_processors
-      @death_time = 60
+      @timeout = timeout
     end
   end
 end

@@ -27,27 +27,25 @@ class Style
                :logfile=>'log/style.log', :children=>{},:sockets=>{},
                :style_config=>{}, :directory=>'.'}
     @mutex = Mutex.new
-    parse_options
+    begin
+      parse_options
+    rescue GetoptLong::InvalidOption
+      exit_with_error($!)
+    end
   end
   
   # Check that the directory of the given filename exists and is a directory, exit otherwise 
   def check_dir(filename)
     filename = File.expand_path(filename)
     dirname = File.dirname(filename)
-    unless File.directory?(dirname)
-      puts "Invalid directory: #{dirname}"
-      exit(1)
-    end
+    exit_with_error("Invalid directory: #{dirname}") unless File.directory?(dirname)
     filename
   end
   
   # Check that the filename given exists and is a file, exit otherwise 
   def check_file(filename)
     filename = File.expand_path(filename)
-    unless File.file?(filename)
-      puts "Invalid file: #{filename}"
-      exit(1)
-    end
+    exit_with_error("Invalid file: #{filename}") unless File.file?(filename)
     filename
   end
 
@@ -140,7 +138,7 @@ class Style
     end
     
     config[:directory] = File.expand_path(config[:directory])
-    Dir.chdir(config[:directory]) rescue (puts "Invalid directory: #{arg}"; exit(1))
+    Dir.chdir(config[:directory]) rescue (exit_with_error("Invalid directory: #{config[:directory]}"))
     
     cliconfig[:config] = File.expand_path(check_file(cliconfig[:config])) if cliconfig[:config]
     config[:config] = File.expand_path(config[:config])
@@ -151,10 +149,14 @@ class Style
       config[opt] = File.expand_path(config[opt])
       config[opt] = check_dir(config[opt])
     end
-    unless VALID_STYLE_RE.match(config[:style])
-      puts "#{config[:style]} is not a valid style!"
-      exit(1)
-    end
+    exit_with_error("#{config[:style]} is not a valid style!") unless VALID_STYLE_RE.match(config[:style])
+  end
+  
+  # Print the error message and the usage, then exit
+  def exit_with_error(error_message)
+    puts error_message
+    puts usage
+    exit(1)
   end
 
   # Process the command given 
@@ -179,8 +181,7 @@ class Style
       when 'stop'
         signal_supervisor(:INT)
       else
-        puts usage
-        exit(1)
+        exit_with_error("Not a valid command: #{command}")
     end
   end
 
@@ -199,8 +200,7 @@ class Style
       when 'stop'
         stop
       else
-        puts usage
-        exit(1)
+        exit_with_error("Not a valid command: #{command}")
     end
   end
   
