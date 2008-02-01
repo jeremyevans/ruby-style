@@ -1,11 +1,11 @@
 spec = Gem::Specification.new do |s|
   s.name = "ruby-style"
-  s.version = "1.0.2"
+  s.version = "1.1.0"
   s.author = "Jeremy Evans"
   s.email = "code@jeremyevans.net"
   s.platform = Gem::Platform::RUBY
   s.summary = "Supervised TCPServer, Yielding Listeners Easily"
-  s.files = %w'LICENSE README lib/style.rb lib/RailsSCGIStyle.rb lib/RailsMongrelStyle.rb'
+  s.files = %w'LICENSE README' + Dir['lib/**/*.rb']
   s.require_paths = ["lib"]
   s.executables = %w'style'
   s.has_rdoc = true

@@ -28,7 +28,8 @@ Subversion access is available at svn://code.jeremyevans.net/ruby-style/.
   the fly
 * Supports both command line and yaml config file configuration
 * Is easily extensible to support running other frameworks and protocols other
-  than the included ones (RailsMongrel and RailsSCGI)
+  than the included ones (Rails and Ramaze; SCGI, Mongrel, and Evented
+  Mongrel)
 
 == Running and configuration
 
@@ -37,16 +38,18 @@ just run the program without any arguments:
 
 style [option value, ...] (decrement|halt|increment|restart|start|stop)
  Options:
+  -a, --adapter       Adapter/Framework to use [rails]
   -b, --bind          IP address to bind to [127.0.0.1]
   -c, --config        Location of config file [config/style.yaml]
   -d, --directory     Working directory [.]
+  -D, --debug         Run the program in the foreground without forking [No]
   -f, --fork          Number of listners on each port [1]
+  -h, --handler       Handler/Server to use [mongrel]
   -k, --killtime      Number of seconds to wait when killing each child [2]
   -l, --logfile       Where to redirect STDOUT and STDERR [log/style.log]
   -n, --number        Number of ports to which to bind [1]
   -p, --port          Starting port to which to bind [9999]
   -P, --pidfile       Location of pid file [log/style.pid]
-  -s, --style         Type of style to use [RailsMongrel]
   -u, --unsupervised  Whether to run unsupervised [No]
 
 Here's what the various commands do:
@@ -66,9 +69,15 @@ process, so the -c, -l, and -P options are relative to that.
 
 Here's a longer explanation of the options:
 
+  -a, --adapter       Adapter/Framework to use [rails]
+
+  This is the adapter/framework to use.  Support for Rails and Ramaze is
+  included in the distribution, support for other frameworks should be fairly
+  easy to add.
+
   -b, --bind          IP address to bind to [127.0.0.1]
 
-  This is the TCP/IP networking sockets to bind to.  It defaults to the
+  This is the TCP/IP networking socket to bind to.  It defaults to the
   loopback address because generally the web application runs on the same
   physical server as the web server.  If this is not the case, change it to an
   externally available IP, and make sure to lock down access to the port via a
@@ -89,6 +98,11 @@ Here's a longer explanation of the options:
   root of the application before hand and then not use this option. This option
   is not configurable from the configuration file.
 
+  -D, --debug         Run the program in the foreground without forking [No]
+
+  This runs the program in the program without forking, aiding in debugging a
+  problematic configuration.
+
   -f, --fork          Number of listners on each port [1]
 
   This enables multiple child processes listening on each port.  It is
@@ -99,6 +113,13 @@ Here's a longer explanation of the options:
   replacement processes are started before the currently listening processes
   are killed, so it is possibly to have multiple processes listening on a port
   even if this is left at one.
+
+  -h, --handler       Handler/Server to use [mongrel]
+
+  This is the handler/server to use.  Support for Mongrel, Evented Mongrel,
+  and SCGI is included in the distribution.  Support for other servers is
+  easy to add as long as the servers can be modified to use the socket
+  created by style ($STYLE_SOCKET).
 
   -k, --killtime      Number of seconds to wait when killing each child [2]
 
@@ -134,15 +155,6 @@ Here's a longer explanation of the options:
   they should be, and you will probably won't be able to start new processes
   (because the ports will still be in use).
 
-  -s, --style         Type of style to use [RailsMongrel]
-
-  This is the type of style to use.  It defaults to RailsMongrel, as that is
-  most common configuration these days.  The other style included with style is
-  RailsSCGI.  Adding other styles is fairly easy, just make the style is in a
-  file named XXXXXStyle.rb (where XXXXX is in the name of the style), and that
-  file is located in ruby's library path ($:, e.g. via the RUBYLIB environment
-  variable).  See the included styles for an example.
-
   -u, --unsupervised  Whether to run unsupervised [No]
   
   This starts child processes without using a supervisor process.  It is not
@@ -152,24 +164,15 @@ Here's a longer explanation of the options:
   restarted when they die, and you may lose connections during restarts.
 
 Every one of the long options can also be specified in the config file.  Also,
-the  config file if you want to specify any settings specific to the style
-being used (such as modifying the Rails environment setting).  
+the config file must be used if you want to specify any settings specific to
+adapter being used (such as modifying the Rails environment setting).  See
+below for information on the adapter_config config file variable.
 
-== Included styles and config files
+== The config file
 
-style current comes with support for the following styles: RailsMongrelStyle
-(the default, which requires rails and mongrel), and RailsSCGIStyle (which
-requires rails and ruby-scgi).
-
-The RailsMongrel style supports running Rails on Mongrel, which would usually
-be deployed behind a front end webserver, such as Apache, Lighttpd, or Nginx.
-The RailsSCGI style supports running Rails over SCGI, which is supported by
-both Apache and Lighttpd.  Both default to running Rails in production mode,
-as style is designed as a production tool.
-
-Example RailsMongrel style.yaml that listens on ports 8912 and 8192 on any
-interface, with three listeners per port.  Note how the :style_config entry is
-used to set up settings specific to the RailsMongrel style, such as placing
+Example Rails+Mongrel style.yaml that listens on ports 8912 and 8193 on any
+interface, with three listeners per port.  Note how the :adapter_config entry 
+is used to set up settings specific to the Rails adapter, such as placing
 Rails in development mode.
 
 ---
@@ -178,32 +181,36 @@ Rails in development mode.
 :fork: 3
 :number: 2
 :killtime: 1
-:style: RailsMongrel
-:style_config:
+:adapter: rails
+:handler: mongrel
+:adapter_config:
   :environment: development
   :log_file: log/rails-mongrel.log
   :docroot: public
   :num_processors: 99
   :timeout: 100
 
-Example RailsSCGI style.yaml that has four listeners on port 8912:
+Example Rails+SCGI style.yaml that has four listeners on port 8912:
 
 ---
 :port: 8912
 :fork: 4
 :number: 1 
-:style: RailsSCGI
-:style_config:
+:adapter: rails
+:handler: scgi
+:adapter_config:
   :logfile: log/railsscgi.log
   :maxconns: 10
   :environment: production
 
-Very simple configuration that runs RailsMongrel style in unsupervised mode on
-port 3000.
+Very simple configuration that runs Ramaze+Evented Mongrel in unsupervised
+mode on port 3000.
 
 ---
 :port: 3000
 :unsupervised: 1
+:adapter: ramaze
+:handler: evented_mongrel
 
 == How restarting works
 
@@ -261,25 +268,20 @@ Thu Sep  6 12:01:59 PDT 2007
 Result, three brand new listening processes, total time to restart is about 12
 seconds (2 * (2 killtime * 1 number * 3 fork)).
 
-== Other frameworks and protocols
+== Other handlers and adapter
 
-style can support any ruby server program that supports the following
-interface (which is called a style):
+To add support for another handler, make sure the instead of creating a socket,
+it uses the socket provided by style, available in the global variable
+$STYLE_SOCKET.  See existing handler code to see how Mongrel, SCGI, and Event
+Machine were modified to support this.
 
-# in file XXXXXStyle.rb, which must be in ruby's path ($:)
-# XXXXX is the name of the style (e.g. RubySCGI)
-  class XXXXXStyle
-    def initialize(options)
-      #options is a Hash
-    end
-    
-    def listen(socket)
-      # socket is a TCPServer
-    end
-  end
+Support for other adapters is easily added by adding the run method to the
+Style class.  This can be easy (as it is with Ramaze), or more difficult (as it
+is with Rails).  If the adapter uses Rack, it should be fairly simple.
 
-Just specify the style with -s or --style on the command line, or :style in the
-config file.
+Style loads adapters and handlers from style/{adapter,handler} relative to the
+load path, so you can add your own adapters and handlers without modifying the
+program, as long as you place the files somewhere in the load path.
 
 == FAQ
 
@@ -289,4 +291,4 @@ A: No.  Among other things, style uses fork, which is not available on Windows.
 
 Q: Does it work with Capistrano yet?
 
-A: I haven't tried.  If you have luck, let me know.
+A: I haven't tried.  It probably can, but it will take a little custom work.

@@ -16,16 +16,15 @@ require 'yaml'
 # trees.
 class Style
   attr_reader :config, :mutex
-  VALID_STYLE_RE = /\A[A-Z][A-ZA-z0-9]*\z/
   
   # Configure style
   def initialize
-    super
     @config = {:pidfile=>'log/style.pid', :number=>1, :port=>9999,
                :style=>'RailsMongrel', :fork=>1, :bind=>'127.0.0.1',
                :cliconfig=>{}, :killtime=>2, :config=>'config/style.yaml',
                :logfile=>'log/style.log', :children=>{},:sockets=>{},
-               :style_config=>{}, :directory=>'.'}
+               :adapter_config=>{}, :directory=>'.', :debug=>false, 
+               :unsupervised=> false, :adapter=>'rails', :handler=>'mongrel'}
     @mutex = Mutex.new
     begin
       parse_options
@@ -58,6 +57,12 @@ class Style
     conf
   end
   
+  def create_socket(bind, port)
+    socket = TCPServer.new(bind, port)
+    socket.listen(50)
+    socket
+  end
+  
   # Detach the process from the controlling terminal, exit otherwise
   def detach
     unless Process.setsid
@@ -66,13 +71,12 @@ class Style
     end
     trap(:HUP, 'IGNORE')
   end
-
-  # Load the revelent style
-  def get_style(string)
-    raise NameError, "#{string} is not a valid style!" unless VALID_STYLE_RE.match(string)
-    style= "#{string}Style"
-    require style
-    eval(style)
+  
+  # Print the error message and the usage, then exit
+  def exit_with_error(error_message)
+    puts error_message
+    puts usage
+    exit(1)
   end
   
   # Kill each of the given pids in order
@@ -92,6 +96,16 @@ class Style
       return nil
     end
   end
+  
+  # Load the revelent style adapter/framework
+  def load_adapter
+    require "style/adapter/#{config[:adapter]}"
+  end
+  
+  # Load the revelent style handler/server
+  def load_handler
+    require "style/handler/#{config[:handler]}"
+  end
 
   # Parse the command line options, and merge them with the default options and
   # the config file options.  Config file options take precendence over the
@@ -99,27 +113,35 @@ class Style
   def parse_options
     cliconfig = config[:cliconfig]
     GetoptLong.new(
+      [ '--adapter', '-a', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--bind', '-b', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--config', '-c', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--directory', '-d', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--debug', '-D', GetoptLong::NO_ARGUMENT],
       [ '--fork', '-f', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--handler', '-h', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--killtime', '-k', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--logfile', '-l', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--number', '-n', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--port', '-p', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--pidfile', '-P', GetoptLong::REQUIRED_ARGUMENT ],
-      [ '--style', '-s', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--unsupervised', '-u', GetoptLong::NO_ARGUMENT]
     ).each do |opt, arg|
       case opt
+        when '--adapter'
+          cliconfig[:adapter] = arg
         when '--bind'
           cliconfig[:bind] = arg
         when '--config'
           config[:config] = cliconfig[:config] = arg
         when '--directory'
           config[:directory] = arg
+        when '--debug'
+          cliconfig[:debug] = true
         when '--fork'
           cliconfig[:fork] = arg.to_i
+        when '--handler'
+          cliconfig[:handler] = arg
         when '--killtime'
           cliconfig[:killtime] = arg.to_i
         when '--logfile'
@@ -130,8 +152,6 @@ class Style
           cliconfig[:port] = arg.to_i
         when '--pidfile'
           cliconfig[:pidfile] = arg
-        when '--style'
-          cliconfig[:style] = arg
         when '--unsupervised'
           cliconfig[:unsupervised] = true
       end
@@ -144,24 +164,24 @@ class Style
     config[:config] = File.expand_path(config[:config])
     reload_config
     
-    [:logfile, :pidfile].each do |opt|
-      cliconfig[opt] = File.expand_path(cliconfig[opt]) if cliconfig[opt]
-      config[opt] = File.expand_path(config[opt])
-      config[opt] = check_dir(config[opt])
+    unless config[:debug]
+      [:logfile, :pidfile].each do |opt|
+        cliconfig[opt] = File.expand_path(cliconfig[opt]) if cliconfig[opt]
+        config[opt] = File.expand_path(config[opt])
+        config[opt] = check_dir(config[opt])
+      end
     end
-    exit_with_error("#{config[:style]} is not a valid style!") unless VALID_STYLE_RE.match(config[:style])
-  end
-  
-  # Print the error message and the usage, then exit
-  def exit_with_error(error_message)
-    puts error_message
-    puts usage
-    exit(1)
   end
 
   # Process the command given 
   def process(command)
-    config[:unsupervised] ? process_unsupervised_command(command) : process_supervised_command(command) 
+    if config[:debug]
+      run_in_foreground
+    elsif config[:unsupervised]
+      process_unsupervised_command(command)
+    else
+      process_supervised_command(command)
+    end
   end
 
   # Process the command given in supervised mode.  All commands except start just send
@@ -220,7 +240,8 @@ class Style
   end
 
   # Reload the configuration, used when restarting.  Only the following options
-  # take effect when reloading: config, killtime, pidfile, style, and style_config.  
+  # take effect when reloading: config, killtime, pidfile, adapter, handler,
+  # and adapter_config.  
   def reload_config
     config.merge!(config_file_options(config[:config]))
     config.merge!(config[:cliconfig])
@@ -239,6 +260,21 @@ class Style
       end
       Process.detach(pid)
     end rescue nil
+  end
+  
+  # Load the relevant handler and adapter and run the server
+  def run_child
+    load_handler
+    load_adapter
+    run
+  end
+  
+  # Run the program in the foreground instead of daemonizing.  Only runs on one
+  # port, and obviously doesn't fork.
+  def run_in_foreground
+    $STYLE_SOCKET = create_socket(config[:bind], config[:port])
+    config[:sockets][$STYLE_SOCKET] = config[:port]
+    run_child
   end
   
   # Setup the necessary signals used in supervisory mode:
@@ -318,10 +354,11 @@ class Style
   def start_child(socket)
     return if config[:shutdown]
     pid = fork do
+      $STYLE_SOCKET = socket
       [:HUP, :INT, :TERM, :USR1, :USR2].each{|signal| trap(signal, 'DEFAULT')}
       config[:sockets].keys.each{|sock| sock.close unless sock == socket}
-      $0 = "#{config[:style]}Style dir:#{Dir.pwd} port:#{config[:sockets][socket]}"
-      get_style(config[:style]).new(config[:style_config]).listen(socket)
+      $0 = "#{process_name} port:#{config[:sockets][socket]}"
+      run_child
     end
     #puts "started pid #{pid}"
     config[:children][pid] = socket
@@ -334,7 +371,7 @@ class Style
       redirect_io
       config[:number].times do |i|
         port = config[:port]+i
-        socket = TCPServer.new(config[:bind], port)
+        socket = create_socket(config[:bind], port)
         config[:sockets][socket] = port
         config[:fork].times{start_child(socket)}
       end
@@ -354,11 +391,17 @@ class Style
     end
   end
   
+  # Name of the Style
+  def process_name
+    "style-#{config[:adapter]}-#{config[:handler]} #{Dir.pwd}"
+  end
+  
+  
   # Start all necessary children of the supervisor process (number * fork)
   def supervisor_children_start
     config[:number].times do |i|
       port = config[:port]+i
-      socket = TCPServer.new(config[:bind], port)
+      socket = create_socket(config[:bind], port)
       config[:sockets][socket] = port
       config[:fork].times{start_child(socket)}
     end
@@ -372,7 +415,7 @@ class Style
 
   # Do the final setup of the supervisor process, and then loop indefinitely
   def supervisor_loop
-    $0 = "#{config[:style]}Style dir:#{Dir.pwd} supervisor"
+    $0 = "#{process_name} supervisor"
     redirect_io
     supervisor_children_start
     setup_supervisor_signals
@@ -407,16 +450,18 @@ class Style
     <<-END
   style [option value, ...] (decrement|halt|increment|restart|start|stop)
    Options:
+    -a, --adapter       Adapter/Framework to use [rails]
     -b, --bind          IP address to bind to [127.0.0.1]
     -c, --config        Location of config file [config/style.yaml]
     -d, --directory     Working directory [.]
+    -D, --debug         Run the program in the foreground without forking [No]
     -f, --fork          Number of listners on each port [1]
+    -h, --handler       Handler/Server to use [mongrel]
     -k, --killtime      Number of seconds to wait when killing each child [2]
     -l, --logfile       Where to redirect STDOUT and STDERR [log/style.log]
     -n, --number        Number of ports to which to bind [1]
     -p, --port          Starting port to which to bind [9999]
     -P, --pidfile       Location of pid file [log/style.pid]
-    -s, --style         Type of style to use [RailsMongrel]
     -u, --unsupervised  Whether to run unsupervised [No]
     END
   end

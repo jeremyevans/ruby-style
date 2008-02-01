@@ -1,13 +1,34 @@
-#!/usr/bin/env ruby
+require 'rubygems'
 require 'scgi'
 
+class SCGI::Processor
+  # Use the standard error as the output logger, and use $STYLE_SOCKET as the
+  # socket on which to listen
+  def initialize(settings = {})
+    @socket ||= $STYLE_SOCKET
+    @total_conns ||= 0
+    @shutdown ||= false
+    @dead ||= false
+    @threads ||= Queue.new
+    @log = Object.new
+    def @log.info(msg)
+      STDERR.puts("[INF][#{@pid ||= Process.pid}] #{msg}")
+    end
+    def @log.error(msg, exc=nil)
+      STDERR.puts("[ERR][#{@pid ||= Process.pid}] #{msg}#{": #{exc}\n#{exc.backtrace.join("\n")}" if exc}")
+    end
+    @maxconns ||= settings[:maxconns] || 2**30-1
+    super()
+    setup_signals
+  end
+end
+
 # This SCGI::Processor subclass hooks the SCGI request into Ruby on Rails.
-class RailsSCGIStyle < SCGI::Processor
+class RailsSCGIProcessor < SCGI::Processor
   # Initialzes Rails with the appropriate environment and settings
   def initialize(settings)
-    ENV['RAILS_ENV'] = settings[:environment] || 'production'
-    $0 += " environment:#{ENV['RAILS_ENV']}"
-    require "config/environment"
+    $0 += " environment:#{ENV['RAILS_ENV'] = settings[:environment] || 'production'}"
+    require 'config/environment'
     ActiveRecord::Base.allow_concurrency = false
     require 'dispatcher'
     super(settings)
