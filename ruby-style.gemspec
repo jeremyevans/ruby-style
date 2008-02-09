@@ -9,6 +9,6 @@ spec = Gem::Specification.new do |s|
   s.require_paths = ["lib"]
   s.executables = %w'style'
   s.has_rdoc = true
-  s.rdoc_options = %w'--inline-source --line-numbers'
+  s.rdoc_options = %w'--inline-source --line-numbers README lib'
   s.rubyforge_project = 'ruby-style'
 end

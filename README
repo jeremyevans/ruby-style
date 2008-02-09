@@ -173,44 +173,45 @@ below for information on the adapter_config config file variable.
 Example Rails+Mongrel style.yaml that listens on ports 8912 and 8193 on any
 interface, with three listeners per port.  Note how the :adapter_config entry 
 is used to set up settings specific to the Rails adapter, such as placing
-Rails in development mode.
+Rails in development mode.  Ignore the pipes at the beginning of the line, 
+blame RDoc limitations.
 
----
-:port: 8912
-:bind: ""
-:fork: 3
-:number: 2
-:killtime: 1
-:adapter: rails
-:handler: mongrel
-:adapter_config:
-  :environment: development
-  :log_file: log/rails-mongrel.log
-  :docroot: public
-  :num_processors: 99
-  :timeout: 100
+ | ---
+ | :port: 8912
+ | :bind: ""
+ | :fork: 3
+ | :number: 2
+ | :killtime: 1
+ | :adapter: rails
+ | :handler: mongrel
+ | :adapter_config:
+ |   :environment: development
+ |   :log_file: log/rails-mongrel.log
+ |   :docroot: public
+ |   :num_processors: 99
+ |   :timeout: 100
 
 Example Rails+SCGI style.yaml that has four listeners on port 8912:
 
----
-:port: 8912
-:fork: 4
-:number: 1 
-:adapter: rails
-:handler: scgi
-:adapter_config:
-  :logfile: log/railsscgi.log
-  :maxconns: 10
-  :environment: production
+ | ---
+ | :port: 8912
+ | :fork: 4
+ | :number: 1 
+ | :adapter: rails
+ | :handler: scgi
+ | :adapter_config:
+ |   :logfile: log/railsscgi.log
+ |   :maxconns: 10
+ |   :environment: production
 
 Very simple configuration that runs Ramaze+Evented Mongrel in unsupervised
 mode on port 3000.
 
----
-:port: 3000
-:unsupervised: 1
-:adapter: ramaze
-:handler: evented_mongrel
+ | ---
+ | :port: 3000
+ | :unsupervised: 1
+ | :adapter: ramaze
+ | :handler: evented_mongrel
 
 == How restarting works
 
@@ -219,51 +220,51 @@ killing the exisiting process.  It repeats this for all existing child processes
 
 For example:
 
-# style idling with three listeners
-Thu Sep  6 12:01:47 PDT 2007
-11460 ??  I       0:00.00 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
- 6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-27808 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-# Restart occurs, new process started (1207)
-Thu Sep  6 12:01:49 PDT 2007
-11460 ??  I       0:00.00 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
-27808 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 1207 ??  R       0:00.95 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-# Old process killed (27808)
-Thu Sep  6 12:01:51 PDT 2007
-11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
- 6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-# New process started (3204)
-Thu Sep  6 12:01:53 PDT 2007
-11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
-  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 3204 ??  R       0:01.01 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-# Old process killed (6540)
-Thu Sep  6 12:01:55 PDT 2007
-11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
-  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-# New process started (6766)
-Thu Sep  6 12:01:57 PDT 2007
-11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
-  272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 6766 ??  R       0:00.99 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
-# Old process killed (272)
-Thu Sep  6 12:01:59 PDT 2007
-11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
- 1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
- 6766 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  # style idling with three listeners
+  Thu Sep  6 12:01:47 PDT 2007
+  11460 ??  I       0:00.00 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+   6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+    272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  27808 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  # Restart occurs, new process started (1207)
+  Thu Sep  6 12:01:49 PDT 2007
+  11460 ??  I       0:00.00 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+  27808 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+    272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   1207 ??  R       0:00.95 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  # Old process killed (27808)
+  Thu Sep  6 12:01:51 PDT 2007
+  11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+   6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+    272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  # New process started (3204)
+  Thu Sep  6 12:01:53 PDT 2007
+  11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+    272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   6540 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   3204 ??  R       0:01.01 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  # Old process killed (6540)
+  Thu Sep  6 12:01:55 PDT 2007
+  11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+    272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  # New process started (6766)
+  Thu Sep  6 12:01:57 PDT 2007
+  11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+    272 ??  I       0:02.52 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   6766 ??  R       0:00.99 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+  # Old process killed (272)
+  Thu Sep  6 12:01:59 PDT 2007
+  11460 ??  I       0:00.01 ruby: RailsMongrelStyle dir:/home/billg/testrails supervisor (ruby)
+   1207 ??  I       0:02.51 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   3204 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
+   6766 ??  I       0:02.49 ruby: RailsMongrelStyle dir:/home/billg/testrails port:8912 environment:production (ruby)
 
 Result, three brand new listening processes, total time to restart is about 12
 seconds (2 * (2 killtime * 1 number * 3 fork)).
