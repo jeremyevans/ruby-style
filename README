@@ -28,8 +28,8 @@ Subversion access is available at svn://code.jeremyevans.net/ruby-style/.
   the fly
 * Supports both command line and yaml config file configuration
 * Is easily extensible to support running other frameworks and protocols other
-  than the included ones (Rails and Ramaze; SCGI, Mongrel, and Evented
-  Mongrel)
+  than the included ones (Rails, Ramaze, and a generic adapter; SCGI, Mongrel,
+  and Evented Mongrel)
 
 == Running and configuration
 
@@ -213,6 +213,16 @@ mode on port 3000.
  | :adapter: ramaze
  | :handler: evented_mongrel
 
+Using the generic adapter to host a camping application (you are responsible
+for having the camping application in a my_camping_app.rb file in your 
+$LOAD_PATH that uses Mongrel to run camping):
+
+ | ---
+ | :port: 3301
+ | :adapter: generic
+ | :adapter_config:
+ |   :script: my_camping_app
+
 == How restarting works
 
 Restarting works by starting a new child process, waiting for killtime, and then
@@ -278,7 +288,8 @@ Machine were modified to support this.
 
 Support for other adapters is easily added by adding the run method to the
 Style class.  This can be easy (as it is with Ramaze), or more difficult (as it
-is with Rails).  If the adapter uses Rack, it should be fairly simple.
+is with Rails).  If the adapter uses Rack, it should be fairly simple. You can
+also just use the generic adapter to specify a string to require.
 
 Style loads adapters and handlers from style/{adapter,handler} relative to the
 load path, so you can add your own adapters and handlers without modifying the
