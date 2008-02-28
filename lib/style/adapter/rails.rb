@@ -4,7 +4,22 @@ require 'rubygems'
 class Style
   # Initialzes Rails and Mongrel with the appropriate environment and settings.
   def run
-    config[:handler] == 'scgi' ? run_rails_scgi : run_rails_mongrel
+    if config[:handler] == 'scgi'
+      run_rails_scgi
+    elsif config[:handler] == 'thin'
+      run_rails_thin
+    else
+      run_rails_mongrel
+    end
+  end
+  
+  def run_rails_thin
+    options = {:environment=>'production', :address=>config[:bind],
+      :port=>config[:sockets][$STYLE_SOCKET], :pid=>'/dev/null',
+      :log=>'/dev/null', :timeout=>Thin::Server::DEFAULT_TIMEOUT,
+      :max_persistent_conns=>Thin::Server::DEFAULT_MAXIMUM_PERSISTENT_CONNECTIONS,
+      :max_conns=>Thin::Server::DEFAULT_MAXIMUM_CONNECTIONS}.merge(config[:adapter_config])
+    Thin::Controllers::Controller.new(options).start
   end
   
   def run_rails_scgi

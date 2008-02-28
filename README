@@ -29,7 +29,7 @@ Subversion access is available at svn://code.jeremyevans.net/ruby-style/.
 * Supports both command line and yaml config file configuration
 * Is easily extensible to support running other frameworks and protocols other
   than the included ones (Rails, Ramaze, and a generic adapter; SCGI, Mongrel,
-  and Evented Mongrel)
+  Thin, and Evented Mongrel)
 
 == Running and configuration
 
@@ -203,6 +203,15 @@ Example Rails+SCGI style.yaml that has four listeners on port 8912:
  |   :logfile: log/railsscgi.log
  |   :maxconns: 10
  |   :environment: production
+
+Configuration for running Rails with Thin on ports 3456-3459 with one
+listener on each port:
+
+ | ---
+ | :port: 3456
+ | :number: 4
+ | :adapter: rails
+ | :handler: thin
 
 Very simple configuration that runs Ramaze+Evented Mongrel in unsupervised
 mode on port 3000.
