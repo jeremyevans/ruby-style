@@ -209,7 +209,7 @@ class Style
   # are supported.
   def process_unsupervised_command(command)
     case command
-      when /\A(decrement|halt|increment)\z/
+      when /\A(decrement|increment)\z/
         puts "#{$1} not supported in unsupervised mode"
         exit(1)
       when 'restart'
@@ -217,7 +217,7 @@ class Style
         start
       when 'start'
         start
-      when 'stop'
+      when /\A(stop|halt)\z/
         stop
       else
         exit_with_error("Not a valid command: #{command}")
@@ -245,6 +245,14 @@ class Style
   def reload_config
     config.merge!(config_file_options(config[:config]))
     config.merge!(config[:cliconfig])
+  end
+
+  # Clear the gem paths so that restarts can pick up gems that have been added
+  # since style was initially started
+  def reload_gems
+    Gem.clear_paths
+    # This is done by clear_paths starting with rubygems-0.9.4.4
+    Gem.instance_variable_set(:@searcher, nil) if Gem::RubyGemsVersion < '0.9.4.4'
   end
   
   # Restart stopping children by waiting on them.  If the children have died and
@@ -298,6 +306,7 @@ class Style
       # Restart Children
       Dir.chdir(config[:directory]) rescue nil
       reload_config
+      reload_gems
       supervisor_restart_children
     end
     trap(:INT) do
