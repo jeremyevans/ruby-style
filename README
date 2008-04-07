@@ -15,7 +15,8 @@ Feedback/Bugs/Support Requests should be handled through RubyForge at
 http://rubyforge.org/projects/ruby-style/.
 
 The RDoc is available at http://code.jeremyevans.net/doc/ruby-style/.
-Subversion access is available at svn://code.jeremyevans.net/ruby-style/.
+Source control access is available at github
+(http://github.com/jeremyevans/ruby-style/tree/master).
 
 == Highlights
 
