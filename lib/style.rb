@@ -266,7 +266,6 @@ class Style
           start_child(socket)
         end
       end
-      Process.detach(pid)
     end rescue nil
   end
   
