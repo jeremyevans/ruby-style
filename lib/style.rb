@@ -211,7 +211,7 @@ class Style
   # are supported.
   def process_unsupervised_command(command)
     case command
-      when /\A(decrement|increment)\z/
+      when /\A(decrement|increment|run)\z/
         puts "#{$1} not supported in unsupervised mode"
         exit(1)
       when 'restart'
