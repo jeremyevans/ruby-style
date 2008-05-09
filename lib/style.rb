@@ -196,6 +196,8 @@ class Style
         signal_supervisor(:USR1)
       when 'restart'
         signal_supervisor(:HUP)
+      when 'run'
+        supervisor_loop
       when 'start'
         supervisor_start
       when 'stop'
@@ -456,7 +458,7 @@ class Style
   # The command line usage of the style program
   def usage
     <<-END
-  style [option value, ...] (decrement|halt|increment|restart|start|stop)
+  style [option value, ...] (decrement|halt|increment|restart|run|start|stop)
    Options:
     -a, --adapter       Adapter/Framework to use [rails]
     -b, --bind          IP address to bind to [127.0.0.1]

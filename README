@@ -37,7 +37,7 @@ Source control access is available at github
 To see the available commands and possible and default configuration options,
 just run the program without any arguments:
 
-style [option value, ...] (decrement|halt|increment|restart|start|stop)
+style [option value, ...] (decrement|halt|increment|restart|run|start|stop)
  Options:
   -a, --adapter       Adapter/Framework to use [rails]
   -b, --bind          IP address to bind to [127.0.0.1]
@@ -59,11 +59,15 @@ Here's what the various commands do:
 * halt (TERM) - Immediately shutdown the child processes and exit
 * increment (USR1) - Increase the number of listeners per port by 1
 * restart (HUP) - Replace the current listeners with new listeners
+* run - Runs the supervisor and listening processes without detaching
 * start - Starts the supervisor process and the listening processes
 * stop (INT) - Gracefully shutdown the child processes and exit
 
-All commands except start just send the listed signal to the preexisting
-supervisor process specified in the pid file.
+All commands except start and run just send the listed signal to the
+preexisting supervisor process specified in the pid file.
+
+The signals can be sent directly to style when started with the run command,
+which is the natural way to use style with runit or daemontools.
 
 Note that the -d (--directory) option changes the working directory of the
 process, so the -c, -l, and -P options are relative to that.
