@@ -99,7 +99,13 @@ class Style
   
   # Load the revelent style adapter/framework
   def load_adapter
-    require(config[:adapter].to_s == 'rails' ? "style/adapter/rails" : config[:adapter].to_s)
+    adapter = config[:adapter].to_s
+    if adapter == 'rails'
+      require "style/adapter/rails"
+      run
+    else
+      require adapter
+    end
   end
   
   # Load the revelent style handler/server
@@ -275,7 +281,6 @@ class Style
   def run_child
     load_handler
     load_adapter
-    run
   end
   
   # Run the program in the foreground instead of daemonizing.  Only runs on one
