@@ -14,9 +14,9 @@ style is distributed as a gem, and can be installed with:
 Feedback/Bugs/Support Requests should be handled through RubyForge at
 http://rubyforge.org/projects/ruby-style/.
 
-The RDoc is available at http://code.jeremyevans.net/doc/ruby-style/.
-Source control access is available at github
-(http://github.com/jeremyevans/ruby-style/tree/master).
+The RDoc is available at http://ruby-style.rubyforge.org.
+
+Source is available at github: http://github.com/jeremyevans/ruby-style
 
 == Highlights
 
@@ -29,8 +29,7 @@ Source control access is available at github
   the fly
 * Supports both command line and yaml config file configuration
 * Is easily extensible to support running other frameworks and protocols other
-  than the included ones (Rails, Ramaze, and a generic adapter; SCGI, Mongrel,
-  Thin, and Evented Mongrel)
+  than the included ones (Rails; SCGI, Mongrel, Thin, and Evented Mongrel)
 
 == Running and configuration
 
@@ -41,16 +40,16 @@ style [option value, ...] (decrement|halt|increment|restart|run|start|stop)
  Options:
   -a, --adapter       Adapter/Framework to use [rails]
   -b, --bind          IP address to bind to [127.0.0.1]
-  -c, --config        Location of config file [config/style.yaml]
+  -c, --config        Location of config file [style.yaml]
   -d, --directory     Working directory [.]
   -D, --debug         Run the program in the foreground without forking [No]
   -f, --fork          Number of listners on each port [1]
   -h, --handler       Handler/Server to use [mongrel]
   -k, --killtime      Number of seconds to wait when killing each child [2]
-  -l, --logfile       Where to redirect STDOUT and STDERR [log/style.log]
+  -l, --logfile       Where to redirect STDOUT and STDERR [style.log]
   -n, --number        Number of ports to which to bind [1]
   -p, --port          Starting port to which to bind [9999]
-  -P, --pidfile       Location of pid file [log/style.pid]
+  -P, --pidfile       Location of pid file [style.pid]
   -u, --unsupervised  Whether to run unsupervised [No]
 
 Here's what the various commands do:
@@ -76,9 +75,9 @@ Here's a longer explanation of the options:
 
   -a, --adapter       Adapter/Framework to use [rails]
 
-  This is the adapter/framework to use.  Support for Rails and Ramaze is
-  included in the distribution, support for other frameworks should be fairly
-  easy to add.
+  This is the adapter/framework to use.  Support for Rails is
+  included in the distribution, and is special-cased. Any other value runs
+  require with the argument given.
 
   -b, --bind          IP address to bind to [127.0.0.1]
 
@@ -218,13 +217,13 @@ listener on each port:
  | :adapter: rails
  | :handler: thin
 
-Very simple configuration that runs Ramaze+Evented Mongrel in unsupervised
-mode on port 3000.
+Very simple configuration that runs Ramaze (with the default start.rb runner)
++Evented Mongrel in unsupervised mode on port 3000.
 
  | ---
  | :port: 3000
  | :unsupervised: 1
- | :adapter: ramaze
+ | :adapter: start
  | :handler: evented_mongrel
 
 Using the generic adapter to host a camping application (you are responsible
@@ -233,9 +232,7 @@ $LOAD_PATH that uses Mongrel to run camping):
 
  | ---
  | :port: 3301
- | :adapter: generic
- | :adapter_config:
- |   :script: my_camping_app
+ | :adapter: my_camping_app
 
 == How restarting works
 
@@ -293,21 +290,87 @@ For example:
 Result, three brand new listening processes, total time to restart is about 12
 seconds (2 * (2 killtime * 1 number * 3 fork)).
 
-== Other handlers and adapter
+== Other handlers
 
 To add support for another handler, make sure the instead of creating a socket,
 it uses the socket provided by style, available in the global variable
 $STYLE_SOCKET.  See existing handler code to see how Mongrel, SCGI, and Event
 Machine were modified to support this.
 
-Support for other adapters is easily added by adding the run method to the
-Style class.  This can be easy (as it is with Ramaze), or more difficult (as it
-is with Rails).  If the adapter uses Rack, it should be fairly simple. You can
-also just use the generic adapter to specify a string to require.
+Style loads handlers from style/handler relative to the load path, so you can
+add your own handlers without modifying the program, as long as you place the
+files somewhere in the load path.
 
-Style loads adapters and handlers from style/{adapter,handler} relative to the
-load path, so you can add your own adapters and handlers without modifying the
-program, as long as you place the files somewhere in the load path.
+== Changes to the default config, logfile, and pidfile in 1.2.0
+
+Previously, style had the following defaults:
+
+* config - config/style.yaml
+* logfile - log/style.log
+* pidfile - log/style.pid
+
+These made sense because style was originally designed to serve Rails
+applications, which all have config and log directories.  Now that style
+serves more types of applications, and few of those have config or log
+directories, these no longer made good defaults.  The new defaults use the
+same filename, without the directory:
+
+* config - style.yaml
+* logfile - style.log
+* pidfile - style.pid
+
+== Changes to adapter handling in 1.2.0
+
+Adapter handling was simplified in 1.2.0.  Because there is no easy script
+that loads rails, there is still a rails adapter.  However, for all other
+framaworks you would want to use, just specify the file you want to require
+as the adapter.  This simplifies things and allows you to specify your
+adapter file on the command line:
+
+  style -a sinatra_runner start
+
+Before, this wasn't possible, you had to set up a configuration file or put
+the adapter file you wanted to use in a style/adapter subdirectory in the load
+path.
+
+== Upgrading from 1.1.*, previously using ramaze adapter
+
+Previously, if you used the following configuration:
+
+ | ---
+ | :adapter: ramaze
+
+You should change it to: 
+
+ | ---
+ | :adapter: start
+
+If you specified your own :runner via :adapter_config, just use that runner
+name for the :adapter instead of start.
+
+The Ramaze adapter had some default settings that you might want to consider:
+
+  :test_connections=>false, :force=>true
+
+You should make sure your ramaze runner sets the correct :adapter for Ramaze to
+use (it should use the same one as style uses).  Having it set the :host and
+:port are good ideas, otherwise it may display those incorrectly.  You should
+make sure your ramaze runner actually calls Ramaze.start, as well.
+
+== Upgrading from 1.1.*, previously using generic adapter
+
+If you were previously using the generic adapter, the upgrade is simple. Change
+the following cofiguration from:
+
+ | ---
+ | :adapter: generic
+ | :adapter_config:
+ |   :script: cse
+
+To:
+
+ | ---
+ | :adapter: cse
 
 == FAQ
 

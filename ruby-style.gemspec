@@ -1,8 +1,9 @@
 spec = Gem::Specification.new do |s|
   s.name = "ruby-style"
-  s.version = "1.1.5"
+  s.version = "1.2.0"
   s.author = "Jeremy Evans"
   s.email = "code@jeremyevans.net"
+  s.homepage = "http://ruby-style.rubyforge.org"
   s.platform = Gem::Platform::RUBY
   s.summary = "Supervised TCPServer, Yielding Listeners Easily"
   s.files = %w'LICENSE README' + Dir['lib/**/*.rb']

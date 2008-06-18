@@ -19,10 +19,10 @@ class Style
   
   # Configure style
   def initialize
-    @config = {:pidfile=>'log/style.pid', :number=>1, :port=>9999,
-               :style=>'RailsMongrel', :fork=>1, :bind=>'127.0.0.1',
-               :cliconfig=>{}, :killtime=>2, :config=>'config/style.yaml',
-               :logfile=>'log/style.log', :children=>{},:sockets=>{},
+    @config = {:pidfile=>'style.pid', :number=>1, :port=>9999,
+               :fork=>1, :bind=>'127.0.0.1',
+               :cliconfig=>{}, :killtime=>2, :config=>'style.yaml',
+               :logfile=>'style.log', :children=>{},:sockets=>{},
                :adapter_config=>{}, :directory=>'.', :debug=>false, 
                :unsupervised=> false, :adapter=>'rails', :handler=>'mongrel'}
     @mutex = Mutex.new
@@ -99,7 +99,7 @@ class Style
   
   # Load the revelent style adapter/framework
   def load_adapter
-    require "style/adapter/#{config[:adapter]}"
+    require(config[:adapter].to_s == 'rails' ? "style/adapter/rails" : config[:adapter].to_s)
   end
   
   # Load the revelent style handler/server
