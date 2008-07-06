@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
   s.name = "ruby-style"
-  s.version = "1.2.0"
+  s.version = "1.2.1"
   s.author = "Jeremy Evans"
   s.email = "code@jeremyevans.net"
   s.homepage = "http://ruby-style.rubyforge.org"

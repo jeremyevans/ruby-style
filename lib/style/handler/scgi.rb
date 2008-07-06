@@ -29,7 +29,7 @@ class RailsSCGIProcessor < SCGI::Processor
   def initialize(settings)
     $0 += " environment:#{ENV['RAILS_ENV'] = settings[:environment] || 'production'}"
     require 'config/environment'
-    ActiveRecord::Base.allow_concurrency = false
+    ActiveRecord::Base.allow_concurrency = false if defined?(ActiveRecord)
     require 'dispatcher'
     super(settings)
     @guard = Mutex.new
