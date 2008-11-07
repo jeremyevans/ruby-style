@@ -323,7 +323,7 @@ same filename, without the directory:
 
 Adapter handling was simplified in 1.2.0.  Because there is no easy script
 that loads rails, there is still a rails adapter.  However, for all other
-framaworks you would want to use, just specify the file you want to require
+frameworks you would want to use, just specify the file you want to require
 as the adapter.  This simplifies things and allows you to specify your
 adapter file on the command line:
 
@@ -376,7 +376,8 @@ To:
 
 Q: Does this run on Windows?
 
-A: No.  Among other things, style uses fork, which is not available on Windows.
+A: Only using debug mode (--debug, -D).  All other modes use fork, which isn't
+   supported on Windows.
 
 Q: Does it work with Capistrano yet?
 
