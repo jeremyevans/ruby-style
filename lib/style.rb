@@ -20,7 +20,7 @@ class Style
   # Configure style
   def initialize
     @config = {:pidfile=>'style.pid', :number=>1, :port=>9999,
-               :fork=>1, :bind=>'127.0.0.1',
+               :fork=>1, :bind=>'127.0.0.1', :environment=>{},
                :cliconfig=>{}, :killtime=>2, :config=>'style.yaml',
                :logfile=>'style.log', :children=>{},:sockets=>{},
                :adapter_config=>{}, :directory=>'.', :debug=>false, 
@@ -277,8 +277,9 @@ class Style
     end rescue nil
   end
   
-  # Load the relevant handler and adapter and run the server
+  # Update the environment from the config file and load the relevant handler and adapter and run the server
   def run_child
+    config[:environment].each{|k,v| ENV[k.to_s] = v.to_s}
     load_handler
     load_adapter
   end

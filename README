@@ -233,6 +233,13 @@ $LOAD_PATH that uses Mongrel to run camping):
  | ---
  | :port: 3301
  | :adapter: my_camping_app
+ | :environment:
+ |    RACK_ENV: production
+
+One important thing to note from the example above is that you can specify
+an :environment key in the config file that should be a hash.  If it is
+provided, the hash under it will be added to the environment before
+the child processes are loaded.
 
 == How restarting works
 
