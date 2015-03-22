@@ -1,24 +1,22 @@
 require 'rake'
 require 'rake/clean'
-begin
-  require "hanna/rdoctask"
+
+RDOC_OPTS = ["--quiet", "--line-numbers", "--inline-source"]
+rdoc_task_class = begin
+  require "rdoc/task"
+  RDOC_OPTS.concat(['-f', 'hanna'])
+  RDoc::Task
 rescue LoadError
   require "rake/rdoctask"
+  Rake::RDocTask
 end
 
 Rake::RDocTask.new do |rdoc|
   rdoc.rdoc_dir = "rdoc"
-  rdoc.options += ["--quiet", "--line-numbers", "--inline-source"]
+  rdoc.options += RDOC_OPTS
   rdoc.main = "README"
   rdoc.title = "style (Supervised TCPServer, Yielding Listeners Easily)"
   rdoc.rdoc_files.add ["README", "LICENSE", "lib/**/*.rb"]
-end
-
-desc "Update docs and upload to rubyforge.org"
-task :doc_rforge => [:rdoc]
-task :doc_rforge do
-  sh %{chmod -R g+w rdoc/*}
-  sh %{scp -rp rdoc/* rubyforge.org:/var/www/gforge-projects/ruby-style}
 end
 
 desc "Package ruby-style"
